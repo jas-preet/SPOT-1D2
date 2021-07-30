@@ -1,15 +1,17 @@
 import torch
 import pickle
-import numpy as np
-from dataset.dataset_inference import ProteinDataset, text_collate_fn
-from dataset.data_functions import pickle_load, read_list
-from torch.utils.data import DataLoader
 import argparse
+import numpy as np
+from torch.utils.data import DataLoader
+from main import classification, write_csv
+from dataset.data_functions import pickle_load, read_list
+from dataset.dataset_inference import ProteinDataset, text_collate_fn
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--file_list', default='', type=str, help='file list path ')
 parser.add_argument('--save_path', default='results/', type=str, help='save path')
-parser.add_argument('--device', default='cpu', type=str,
+parser.add_argument('--device', default='cuda:0', type=str,
                     help='"cuda:0", or "cpu" note wont run on other gpu then gpu0 due to limitations of jit trace')
 
 args = parser.parse_args()
@@ -26,45 +28,17 @@ stds = pickle_load("data/stats/stds.pkl")
 means = torch.tensor(means, dtype=torch.float32)
 stds = torch.tensor(stds, dtype=torch.float32)
 
-if args.device == "cuda:0":
 
-    model1 = torch.jit.load("/home/jaspreet/jaspreet_data/jits_conference/model1_class_gpu.pth").to(args.device)
-    model2 = torch.jit.load("/home/jaspreet/jaspreet_data/jits_conference/model2_class_gpu.pth").to(args.device)
-    # model3 = torch.jit.load("/home/jaspreet/jaspreet_data/jits_conference/model3_class_gpu.pth").to(args.device)
-    model4 = torch.jit.load("/home/jaspreet/jaspreet_data/jits_conference/model4_class_gpu.pth").to(args.device)
-    model5 = torch.jit.load("/home/jaspreet/jaspreet_data/jits_conference/model5_class_gpu.pth").to(args.device)
-    model6 = torch.jit.load("/home/jaspreet/jaspreet_data/jits_conference/model6_class_gpu.pth").to(args.device)
-
-model1.eval()
-model2.eval()
-model3.eval()
-model4.eval()
-model5.eval()
-model6.eval()
-
-for i, data in enumerate(tqdm(test_loader)):
-    feats, labels, length, name, seq = data
-    feats = (feats - means) / stds
-    feats, labels = feats.to(DEVICE, dtype=torch.float), labels.to(DEVICE, dtype=torch.float)
-    length = torch.tensor(length)
-
-    pred1 = model1(feats)
-    pred2 = model2(feats, length)
-    pred3 = model3(feats, length)
-    pred4 = model4(feats, length)
-    pred5 = model5(feats, length)
-    pred6 = model6(feats)
+model1 = torch.jit.load("/home/jaspreet/jaspreet_data/jits_conference/new_jits/model1_class_gpu.pth").to(args.device)
+model2 = torch.jit.load("/home/jaspreet/jaspreet_data/jits_conference/new_jits/model2_class_gpu.pth").to(args.device)
+model3 = torch.jit.load("/home/jaspreet/jaspreet_data/jits_conference/new_jits/model4_class_gpu.pth").to(args.device)
+model4 = torch.jit.load("/home/jaspreet/jaspreet_data/jits_conference/new_jits/model5_class_gpu.pth").to(args.device)
+model5 = torch.jit.load("/home/jaspreet/jaspreet_data/jits_conference/new_jits/model6_class_gpu.pth").to(args.device)
 
 
-    pred = (pred1.view(-1, 11) + pred2.view(-1, 11) + pred4.view(-1, 11) + pred5.view(-1, 11) + pred6.view(-1, 11)) / 5
 
-    ss3_pred = pred[:, 0:3]
-    ss8_pred = pred[:, 3:]
-    ss3_label = labels[:, 0:3]
-    ss8_label = labels[:, 3:]
+class_out = classification(data_loader, model1, model2, model3, model4, model5, means, stds, args.device)
+names, seq, ss3_pred_list, ss8_pred_list, ss3_prob_list, ss8_prob_list = class_out
 
-    ss3_label_indices = ss3_label.argmax(1)
-    ss3_label_indices[ss3_label[:, 0] == IGNORE_LABEL] = IGNORE_LABEL
-    ss8_label_indices = ss8_label.argmax(1)
-    ss8_label_indices[ss8_label[:, 0] == IGNORE_LABEL] = IGNORE_LABEL
-
+print(len(ss3_pred_list))
+write_csv(class_out, args.save_path)

@@ -1,0 +1,1 @@
+data/fasta/5LOS_A.fasta

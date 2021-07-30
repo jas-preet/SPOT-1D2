@@ -6,21 +6,21 @@ from torch.utils.data import Dataset
 from dataset.data_functions import *
 
 
-class Proteins_Dataset(Dataset):
-    def __init__(self, list):
-
-        self.list = list
-        self.protein_list = read_list(self.list)
+class ProteinDataset(Dataset):
+    def __init__(self, path_fasta):
+        self.path = path_fasta
 
     def __len__(self):
-        return len(self.protein_list)
+        return len(self.path)
 
     def __getitem__(self, idx):
-        protein = self.protein_list[idx]
-        seq = read_fasta_file("/data/fasta/", protein + ".fasta")
-        pssm = read_pssm("data/pssm/", protein + ".pssm", seq)
-        hmm = read_hhm("data/hmm/", protein + ".hhm", seq)
-        pcp = read_pccp( "data/aa_phy7.txt", seq)
+        fasta_path = self.path[idx]
+        seq = read_fasta_file(fasta_path)
+        protein = fasta_path.split('/')[-1].split('.')[0]
+
+        pssm = read_pssm("data/pssm/" + protein + ".pssm", seq)
+        hmm = read_hhm("data/hmm/" + protein + ".hhm", seq)
+        pcp = read_pccp("data/aa_phy7.txt", seq)
         protein_len = len(seq)
         features = np.concatenate((pssm, hmm, pcp), axis=1)
 
@@ -33,8 +33,8 @@ def text_collate_fn(data):
     """
 
     # sort data by caption length
-    data.sort(key=lambda x: x[2], reverse=True)
-    # data.sort(key=lambda x: len(x[0]), reverse=True)
+    data.sort(key=lambda x: x[1], reverse=True)
+
     features, protein_len, protein, seq = zip(*data)
 
     features = [torch.FloatTensor(x) for x in features]
